@@ -1,0 +1,17 @@
+CREATE CONSTRAINT FOR (p:Player) REQUIRE p.player_id IS UNIQUE;
+CREATE CONSTRAINT FOR (m:Match) REQUIRE m.match_id IS UNIQUE;
+CREATE CONSTRAINT FOR (t:Tourney) REQUIRE t.tourney_id IS UNIQUE;
+CREATE CONSTRAINT FOR (r:Ranking) REQUIRE r.ranking_id IS UNIQUE;
+
+LOAD CSV WITH HEADERS FROM "file:///atp_players.csv" AS row
+WITH row WHERE row.player_id IS NOT NULL
+MERGE (p:Player {player_id: row.player_id})
+ON CREATE SET p.name = row.name_first,
+p.surname = row.name_last,
+p.hand = row.hand,
+p.birthdate = row.dob,
+p.country = row.ioc,
+p.height = row.height,
+p.wikidata_id = row.wikidata_id
+ON MATCH SET p.count = coalesce(p.count, 0) + 1;
+
