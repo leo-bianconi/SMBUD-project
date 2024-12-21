@@ -1,17 +1,72 @@
 CREATE CONSTRAINT FOR (p:Player) REQUIRE p.player_id IS UNIQUE;
 CREATE CONSTRAINT FOR (m:Match) REQUIRE m.match_id IS UNIQUE;
 CREATE CONSTRAINT FOR (t:Tourney) REQUIRE t.tourney_id IS UNIQUE;
-CREATE CONSTRAINT FOR (r:Ranking) REQUIRE r.ranking_id IS UNIQUE;
 
 LOAD CSV WITH HEADERS FROM "file:///atp_players.csv" AS row
 WITH row WHERE row.player_id IS NOT NULL
+WITH row WHERE row.dob IS NOT NULL
 MERGE (p:Player {player_id: row.player_id})
 ON CREATE SET p.name = row.name_first,
 p.surname = row.name_last,
 p.hand = row.hand,
-p.birthdate = row.dob,
-p.country = row.ioc,
+p.birthdate = date(datetime({epochMillis: apoc.date.parse(row.dob, 'ms', 'yyyyMMdd')})),
 p.height = row.height,
 p.wikidata_id = row.wikidata_id
 ON MATCH SET p.count = coalesce(p.count, 0) + 1;
 
+LOAD CSV WITH HEADERS FROM 'file:///atp_players.csv' AS row
+WITH row WHERE row.ioc IS NOT NULL
+MERGE (c:Country {ioc: row.ioc});
+
+LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2024.csv' AS row
+WITH row WHERE row.tourney_id IS NOT NULL
+MERGE (t:Tournament {tourney_id: row.tourney_id})
+ON CREATE SET t.name = row.tourney_name,
+t.draw_size = toInteger(row.draw_size),
+t.level = row.tourney_level,
+t.date = date(datetime({epochMillis: apoc.date.parse(row.tourney_date, 'ms', 'yyyyMMdd')}));
+
+LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2024.csv' AS row
+MERGE (m:Match {match_id: row.tourney_id + '_' + row.match_num})
+ON CREATE SET m.score = row.score,
+m.round = row.round,
+m.minutes = toInteger(row.minutes),
+m.winner_rank = toInteger(row.winner_rank),
+m.loser_rank = toInteger(row.loser_rank);
+
+LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2024.csv' AS row
+MERGE (s:Surface {name: row.surface});
+
+
+//-- Relations --
+
+LOAD CSV WITH HEADERS FROM 'file:///atp_players.csv' AS row
+MATCH (p:Player {player_id: row.player_id})
+MATCH (c:Country {ioc: row.ioc})
+MERGE (p)-[:REPRESENTS]->(c);
+
+LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2024.csv' AS row
+MATCH (t:Tournament {tourney_id: row.tourney_id})
+MATCH (p1:Player {player_id: row.winner_id})
+MERGE (p1)-[:PARTICIPATED_IN]->(t)
+WITH t, row
+MATCH (p2:Player {player_id: row.loser_id})
+MERGE (p2)-[:PARTICIPATED_IN]->(t);
+
+LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2024.csv' AS row
+MATCH (m:Match {match_id: row.tourney_id + '_' + row.match_num})
+MATCH (t:Tournament {tourney_id: row.tourney_id})
+MERGE (m)-[:IN]->(t);
+
+LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2024.csv' AS row
+MATCH (m:Match {match_id: row.tourney_id + '_' + row.match_num})
+MATCH (p1:Player {player_id: row.winner_id})
+MERGE (p1)-[:WON]->(m)
+WITH m, row
+MATCH (p2:Player {player_id: row.loser_id})
+MERGE (p2)-[:LOST]->(m);
+
+LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2024.csv' AS row
+MATCH (t:Tournament {tourney_id: row.tourney_id})
+MATCH (s:Surface {name: row.surface})
+MERGE (t)-[:PLAYED_ON]->(s);

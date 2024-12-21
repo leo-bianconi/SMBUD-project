@@ -1,0 +1,24 @@
+//Paesi con più vittorie
+MATCH (p:Player)-[:WON]->(m:Match), (p)-[:REPRESENTS]->(c:Country)
+RETURN c.ioc AS Country, COUNT(m) AS Victories
+ORDER BY Victories DESC
+LIMIT 10;
+
+//Tempo medio di ciascun torneo
+MATCH (m:Match)-[:IN]->(t:Tournament)
+WHERE m.minutes IS NOT NULL
+RETURN t, AVG(m.minutes) AS AvgMatchDuration
+ORDER BY AvgMatchDuration DESC
+LIMIT 10;
+
+//rapporto tra match vinti e persi di ciascun giocatore
+MATCH (p:Player)-[:WON]->(m1:Match)
+WITH p, COUNT(m1) AS wins
+MATCH (p:Player)-[:LOST]->(m2:Match)
+RETURN p, wins, COUNT(m2) AS losses, (1.0*wins/(wins+COUNT(m2))) AS WinRatio
+ORDER BY WinRatio DESC
+
+//numero di tornei per superficie
+MATCH (t:Tournament)-[]->(s:Surface)
+WITH s, COUNT(t) AS numTournaments
+RETURN s.name AS Surface, numTournaments
