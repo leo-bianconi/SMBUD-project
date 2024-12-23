@@ -75,7 +75,6 @@ RETURN
 ORDER BY YearsChampion ASC
 LIMIT 1;
 
-
 //vincite di ciascun giocatore per superficie
 MATCH (p:Player)-[played]->(m:Match)-[]->(t:Tournament)-[]->(s:Surface)
 WHERE type(played) = "WON"
@@ -85,3 +84,50 @@ WITH p, s,wins, count(m) AS totMatch
 RETURN p.name, p.surname, s.name AS surface, wins, totMatch, 1.0*wins/totMatch AS ratio
 ORDER BY p.player_id,  ratio  DESC
 Limit 10;
+
+//giocatori che si sono scontrati più volte
+MATCH (p1:Player)-[:WON]->(m_won:Match)<-[:LOST]-(p2:Player)
+WHERE p1.player_id < p2.player_id
+WITH p1, p2, COUNT(m_won) AS NumVictoriesP1
+
+MATCH (p1)-[:LOST]->(m_lost:Match)<-[:WON]-(p2)
+WHERE p1.player_id < p2.player_id
+WITH p1, p2, NumVictoriesP1, COUNT(m_lost) AS NumVictoriesP2
+
+RETURN 
+    p1.name + ' ' + p1.surname AS Player1,
+    p2.name + ' ' + p2.surname AS Player2,
+    NumVictoriesP1 + NumVictoriesP2 AS TotMatches,
+    NumVictoriesP1,
+    NumVictoriesP2
+ORDER BY TotMatches DESC
+LIMIT 10;
+
+//trova i "gradi di separazione" tra due giocatori
+MATCH (p1:Player {name: 'Roger', surname: 'Federer'}),
+    (p2:Player {name: 'Lorenzo', surname: 'Musetti'}),
+    path = shortestPath((p1)-[:WON|LOST*]-(p2))
+RETURN path;
+
+// Find "dominance cycles" of length 3 between players, on different tournaments, on the same surface
+MATCH (p1:Player)-[w1:WON]->(m1:Match)-[:IN]->(t1:Tournament)-[:PLAYED_ON]->(s:Surface),
+      (p2:Player)-[l1:LOST]->(m1),
+      (p2)-[w2:WON]->(m2:Match)-[:IN]->(t2:Tournament)-[:PLAYED_ON]->(s),
+      (p3:Player)-[l2:LOST]->(m2),
+      (p3)-[w3:WON]->(m3:Match)-[:IN]->(t3:Tournament)-[:PLAYED_ON]->(s),
+      (p1)-[l3:LOST]->(m3)
+WHERE t1.tourney_id <> t2.tourney_id
+  AND t2.tourney_id <> t3.tourney_id
+  AND t1.tourney_id <> t3.tourney_id
+WITH DISTINCT p1, p2, p3, s.name AS Surface,
+     t1.name AS Tournament1, t1.date AS Date1,
+     t2.name AS Tournament2, t2.date AS Date2,
+     t3.name AS Tournament3, t3.date AS Date3
+ORDER BY Date1, Date2, Date3
+RETURN p1.name + ' ' + p1.surname AS Player1,
+       p2.name + ' ' + p2.surname AS Player2,
+       p3.name + ' ' + p3.surname AS Player3,
+       Surface,
+       Tournament1, Date1,
+       Tournament2, Date2,
+       Tournament3, Date3;

@@ -18,7 +18,7 @@ LOAD CSV WITH HEADERS FROM 'file:///atp_players.csv' AS row
 WITH row WHERE row.ioc IS NOT NULL
 MERGE (c:Country {ioc: row.ioc});
 
-LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2024.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2018-2024.csv' AS row
 WITH row WHERE row.tourney_id IS NOT NULL
 MERGE (t:Tournament {tourney_id: row.tourney_id})
 ON CREATE SET t.name = row.tourney_name,
@@ -35,6 +35,7 @@ m.winner_rank = toInteger(row.winner_rank),
 m.loser_rank = toInteger(row.loser_rank);
 
 LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2018-2024.csv' AS row
+WITH row WHERE row.surface IS NOT NULL
 MERGE (s:Surface {name: row.surface});
 
 
