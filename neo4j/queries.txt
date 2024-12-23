@@ -74,3 +74,14 @@ RETURN
     t.date AS DateTournament
 ORDER BY YearsChampion ASC
 LIMIT 1;
+
+
+//vincite di ciascun giocatore per superficie
+MATCH (p:Player)-[played]->(m:Match)-[]->(t:Tournament)-[]->(s:Surface)
+WHERE type(played) = "WON"
+WITH p, s, count(m) AS wins
+MATCH (p:Player)-[played]->(m:Match)-[]->(t:Tournament)-[]->(s:Surface)
+WITH p, s,wins, count(m) AS totMatch
+RETURN p.name, p.surname, s.name AS surface, wins, totMatch, 1.0*wins/totMatch AS ratio
+ORDER BY p.player_id,  ratio  DESC
+Limit 10;
