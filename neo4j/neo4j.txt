@@ -26,7 +26,7 @@ t.draw_size = toInteger(row.draw_size),
 t.level = row.tourney_level,
 t.date = date(datetime({epochMillis: apoc.date.parse(row.tourney_date, 'ms', 'yyyyMMdd')}));
 
-LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2024.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2018-2024.csv' AS row
 MERGE (m:Match {match_id: row.tourney_id + '_' + row.match_num})
 ON CREATE SET m.score = row.score,
 m.round = row.round,
@@ -34,7 +34,7 @@ m.minutes = toInteger(row.minutes),
 m.winner_rank = toInteger(row.winner_rank),
 m.loser_rank = toInteger(row.loser_rank);
 
-LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2024.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2018-2024.csv' AS row
 MERGE (s:Surface {name: row.surface});
 
 
@@ -45,7 +45,7 @@ MATCH (p:Player {player_id: row.player_id})
 MATCH (c:Country {ioc: row.ioc})
 MERGE (p)-[:REPRESENTS]->(c);
 
-LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2024.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2018-2024.csv' AS row
 MATCH (t:Tournament {tourney_id: row.tourney_id})
 MATCH (p1:Player {player_id: row.winner_id})
 MERGE (p1)-[:PARTICIPATED_IN]->(t)
@@ -53,20 +53,38 @@ WITH t, row
 MATCH (p2:Player {player_id: row.loser_id})
 MERGE (p2)-[:PARTICIPATED_IN]->(t);
 
-LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2024.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2018-2024.csv' AS row
 MATCH (m:Match {match_id: row.tourney_id + '_' + row.match_num})
 MATCH (t:Tournament {tourney_id: row.tourney_id})
 MERGE (m)-[:IN]->(t);
 
-LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2024.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2018-2024.csv' AS row
 MATCH (m:Match {match_id: row.tourney_id + '_' + row.match_num})
 MATCH (p1:Player {player_id: row.winner_id})
-MERGE (p1)-[:WON]->(m)
+MERGE (p1)-[w:WON]->(m)
+ON CREATE SET w.aces = toInteger(row.w_ace),
+w.double_faults = toInteger(row.w_df),
+w.serve_points = toInteger(row.w_svpt),
+w.first_in = toInteger(row.w_1stIn),
+w.first_won = toInteger(row.w_1stWon),
+w.second_won = toInteger(row.w_2ndWon),
+w.serve_games = toInteger(row.w_SvGms),
+w.bp_saved = toInteger(row.w_bpSaved),
+w.bp_faced = toInteger(row.w_bpFaced)
 WITH m, row
 MATCH (p2:Player {player_id: row.loser_id})
-MERGE (p2)-[:LOST]->(m);
+MERGE (p2)-[l:LOST]->(m)
+ON CREATE SET l.aces = toInteger(row.l_ace),
+l.double_faults = toInteger(row.l_df),
+l.serve_points = toInteger(row.l_svpt),
+l.first_in = toInteger(row.l_1stIn),
+l.first_won = toInteger(row.l_1stWon),
+l.second_won = toInteger(row.l_2ndWon),
+l.serve_games = toInteger(row.l_SvGms),
+l.bp_saved = toInteger(row.l_bpSaved),
+l.bp_faced = toInteger(row.l_bpFaced);
 
-LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2024.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///atp_matches_2018-2024.csv' AS row
 MATCH (t:Tournament {tourney_id: row.tourney_id})
 MATCH (s:Surface {name: row.surface})
 MERGE (t)-[:PLAYED_ON]->(s);

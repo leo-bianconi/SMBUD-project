@@ -4,21 +4,73 @@ RETURN c.ioc AS Country, COUNT(m) AS Victories
 ORDER BY Victories DESC
 LIMIT 10;
 
-//Tempo medio di ciascun torneo
+//Paesi con più vittorie di tornei
+MATCH (p:Player)-[:WON]->(m:Match), (p)-[:REPRESENTS]->(c:Country)
+WHERE m.round = 'F'
+RETURN c.ioc AS Country, COUNT(m) AS TournamentsWon
+ORDER BY TournamentsWon DESC
+LIMIT 10;
+
+//Paesi con più vittorie di tornei e singole vittorie
+MATCH (p:Player)-[:WON]->(m:Match), (p)-[:REPRESENTS]->(c:Country)
+WHERE m.round = 'F'
+WITH c, COUNT(m) AS TournamentsWon
+MATCH (p:Player)-[:WON]->(m2:Match), (p)-[:REPRESENTS]->(c:Country)
+RETURN c.ioc AS Country, TournamentsWon, COUNT(m2) AS MatchesWon
+ORDER BY TournamentsWon DESC
+LIMIT 10;
+
+//Paesi con più vittorie di tornei e singole vittorie, con ratio
+MATCH (p:Player)-[:WON]->(m:Match), (p)-[:REPRESENTS]->(c:Country)
+WHERE m.round = 'F'
+WITH c, COUNT(m) AS TournamentsWon
+MATCH (p:Player)-[:WON]->(m2:Match), (p)-[:REPRESENTS]->(c:Country)
+WITH c, TournamentsWon, COUNT(m2) AS MatchesWon
+RETURN c.ioc AS Country, TournamentsWon, MatchesWon, (1.0*TournamentsWon/MatchesWon) AS TournamentsOverMatchesWon
+ORDER BY TournamentsOverMatchesWon DESC
+LIMIT 10;
+
+//Tempo totale di ciascun torneo
 MATCH (m:Match)-[:IN]->(t:Tournament)
 WHERE m.minutes IS NOT NULL
-RETURN t, AVG(m.minutes) AS AvgMatchDuration
-ORDER BY AvgMatchDuration DESC
+RETURN t, SUM(m.minutes) AS TotalMatchDuration
+ORDER BY TotalMatchDuration DESC
 LIMIT 10;
 
 //rapporto tra match vinti e persi di ciascun giocatore
 MATCH (p:Player)-[:WON]->(m1:Match)
 WITH p, COUNT(m1) AS wins
 MATCH (p:Player)-[:LOST]->(m2:Match)
-RETURN p, wins, COUNT(m2) AS losses, (1.0*wins/(wins+COUNT(m2))) AS WinRatio
+WITH p, wins, COUNT(m2) AS losses
+WHERE wins + losses > 20    // to exclude players who only played very few matches
+RETURN p.name, p.surname, wins, losses, (1.0*wins/(wins+losses)) AS WinRatio
 ORDER BY WinRatio DESC
 
 //numero di tornei per superficie
 MATCH (t:Tournament)-[]->(s:Surface)
 WITH s, COUNT(t) AS numTournaments
 RETURN s.name AS Surface, numTournaments
+
+//Partite con il maggior numero di ace
+MATCH (p:Player)-[played]->(m:Match)<-[played2]-(p2:Player)
+WHERE played.aces IS NOT NULL AND played2.aces IS NOT NULL AND p <> p2
+RETURN p.name + ' ' + p.surname AS MostAcesPlayer, m.score AS Score, p2.name + ' ' + p2.surname AS Opponent, played.aces AS NumAces
+ORDER BY NumAces DESC
+LIMIT 20;
+
+//Giocatore più giovane a vincere un torneo
+MATCH (p:Player)-[:WON]->(m:Match), (m)-[:IN]->(t:Tournament)
+WHERE m.round = 'F'
+WITH p, t, MIN(duration.between(p.birthdate, t.date)) AS YearsChampion
+WITH p, t,
+    YearsChampion.years as Years,
+    YearsChampion.months as Months,
+    YearsChampion.days as Days,
+    YearsChampion
+RETURN 
+    p.name + ' ' + p.surname AS Player, 
+    toString(Years) + ' years ' + toString(toInteger(Months - Years*12.0)) + ' months ' + toString(Days) + ' days ' AS ChampionAt,
+    t.name AS Tournament,
+    t.date AS DateTournament
+ORDER BY YearsChampion ASC
+LIMIT 1;
