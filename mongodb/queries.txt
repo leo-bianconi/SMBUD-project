@@ -1,0 +1,626 @@
+##### 1. Crimes with Average Youngest Victim 
+
+db.crime_reports.aggregate([
+    { $match: { "Victim.Age": { $ne: "0" } } }, // Exclude cases with age "0"
+    { $group: { _id: "$CrimeCode.Description", avgAge: { $avg: { $toInt: "$Victim.Age" } } } },
+    { $sort: { avgAge: 1 } }, // Sort by average age in ascending order
+    { $limit: 10 } // Limit to the lowest 10
+])
+
+[
+  { "_id": "CHILD NEGLECT (SEE 300 W.I.C.)", "avgAge": 8.180310880829015 },
+  {
+    "_id": "CRM AGNST CHLD (13 OR UNDER) (14-15 & SUSP 10 YRS OLDER)",
+    "avgAge": 10.65020103388857
+  },
+  { "_id": "CHILD ABANDONMENT", "avgAge": 11 },
+  {
+    "_id": "CHILD ABUSE (PHYSICAL) - SIMPLE ASSAULT",
+    "avgAge": 11.526331018518519
+  },
+  {
+    "_id": "CHILD ABUSE (PHYSICAL) - AGGRAVATED ASSAULT",
+    "avgAge": 11.804263565891473
+  },
+  { "_id": "CHILD ANNOYING (17YRS & UNDER)", "avgAge": 13.342079689018465 },
+  {
+    "_id": "LEWD/LASCIVIOUS ACTS WITH CHILD",
+    "avgAge": 13.590361445783133
+  },
+  { "_id": "CONTRIBUTING", "avgAge": 15.318181818181818 },
+  {
+    "_id": "SEX,UNLAWFUL(INC MUTUAL CONSENT, PENETRATION W/ FRGN OBJ",
+    "avgAge": 16.008434864104967
+  },
+  {
+    "_id": "HUMAN TRAFFICKING - COMMERCIAL SEX ACTS",
+    "avgAge": 17.471238938053098
+  }
+]
+
+##### 2. Crimes number per year
+
+db.crime_reports.aggregate([
+    {
+        $addFields: {
+            year: { $year: { $dateFromString: { dateString: "$DateReported" } } },
+            month: { $month: { $dateFromString: { dateString: "$DateReported" } } }
+        }
+    },
+    {
+        $group: {
+            _id: { year: "$year"},
+            totalCrimes: { $sum: 1 }
+        }
+    },
+    { $sort: { "_id.year": 1, "_id.month": 1 } } // Sort by year and month
+]);
+
+[
+  { _id: { year: 2020 }, totalCrimes: 192708 },
+  { _id: { year: 2021 }, totalCrimes: 208284 },
+  { _id: { year: 2022 }, totalCrimes: 235064 },
+  { _id: { year: 2023 }, totalCrimes: 234651 },
+  { _id: { year: 2024 }, totalCrimes: 130405 }
+]
+
+
+##### 3. Most Dangerous Areas for Battery
+
+db.crime_reports.aggregate([
+    { $match: { "CrimeCode.Description": "BATTERY - SIMPLE ASSAULT" } },
+    {
+        $group: {
+            _id: "$Area.Name",
+            totalCrimes: { $sum: 1 }
+        }
+    },
+    { $sort: { totalCrimes: -1 } } // Sort by the number of crimes
+]);
+
+[
+  { _id: 'Central', totalCrimes: 6806 },
+  { _id: '77th Street', totalCrimes: 4707 },
+  { _id: 'Southwest', totalCrimes: 4528 },
+  { _id: 'Hollywood', totalCrimes: 4484 },
+  { _id: 'Olympic', totalCrimes: 4380 },
+  { _id: 'Newton', totalCrimes: 4156 },
+  { _id: 'Rampart', totalCrimes: 4133 },
+  { _id: 'Southeast', totalCrimes: 3939 },
+  { _id: 'N Hollywood', totalCrimes: 3433 },
+  { _id: 'Pacific', totalCrimes: 3332 },
+  { _id: 'Wilshire', totalCrimes: 3164 },
+  { _id: 'Harbor', totalCrimes: 3156 },
+  { _id: 'Hollenbeck', totalCrimes: 3091 },
+  { _id: 'Van Nuys', totalCrimes: 2850 },
+  { _id: 'West LA', totalCrimes: 2831 },
+  { _id: 'Topanga', totalCrimes: 2766 },
+  { _id: 'West Valley', totalCrimes: 2749 },
+  { _id: 'Devonshire', totalCrimes: 2687 },
+  { _id: 'Mission', totalCrimes: 2606 },
+  { _id: 'Northeast', totalCrimes: 2593 },
+  { _id: 'Foothill', totalCrimes: 2419 } 
+]
+
+
+##### 4. Most used weapons
+
+db.crime_reports.aggregate([
+    {
+        $match: { "Weapon.Description": { $ne: "" } } // Include only records where a weapon is involved
+    },
+    {
+        $group: {
+            _id: "$Weapon.Description",
+            totalIncidents: { $sum: 1 }
+        }
+    },
+    {
+        $sort: { totalIncidents: -1 } // Sort by total incidents descending
+    },
+    { $limit: 10 } // Limit to the lowest 10
+]);
+
+[
+  { _id: 'STRONG-ARM (HANDS, FIST, FEET OR BODILY FORCE)', totalIncidents: 174693 },
+  { _id: 'UNKNOWN WEAPON/OTHER WEAPON', totalIncidents: 36289 },
+  { _id: 'VERBAL THREAT', totalIncidents: 23835 },
+  { _id: 'HAND GUN', totalIncidents: 20179 },
+  { _id: 'SEMI-AUTOMATIC PISTOL', totalIncidents: 7266 },
+  { _id: 'KNIFE WITH BLADE 6INCHES OR LESS', totalIncidents: 6836 },
+  { _id: 'UNKNOWN FIREARM', totalIncidents: 6581 },
+  { _id: 'OTHER KNIFE', totalIncidents: 5880 },
+  { _id: 'MACE/PEPPER SPRAY', totalIncidents: 3729 },
+  { _id: 'VEHICLE', totalIncidents: 3258 }
+]
+
+##### 5. Reported Crimes Percentage per Area
+
+db.crime_reports.aggregate([
+    {
+        $group: {
+            _id: "$Area.Name",
+            totalCrimes: { $sum: 1 }
+        }
+    },
+    {
+        $group: {
+            _id: null,
+            areas: { $push: { area: "$_id", count: "$totalCrimes" } },
+            totalCrimes: { $sum: "$totalCrimes" }
+        }
+    },
+    { $unwind: "$areas" },
+    {
+        $project: {
+            _id: "$areas.area",
+            totalCrimes: "$areas.count",
+            percentage: { $multiply: [{ $divide: ["$areas.count", "$totalCrimes"] }, 100] }
+        }
+    },
+    {
+        $sort: { percentage: -1 } // Sort by crime rate descending
+    }
+]);
+
+[
+  {
+    "_id": "Central",
+    "totalCrimes": 69330,
+    "percentage": 6.9252990674370105
+  },
+  {
+    "_id": "77th Street",
+    "totalCrimes": 61624,
+    "percentage": 6.15555502281463
+  },
+  { "_id": "Pacific", "totalCrimes": 59184, "percentage": 5.911826049433031 },
+  {
+    "_id": "Southwest",
+    "totalCrimes": 57198,
+    "percentage": 5.713446647328171
+  },
+  {
+    "_id": "Hollywood",
+    "totalCrimes": 52239,
+    "percentage": 5.2180974756071254
+  },
+  {
+    "_id": "N Hollywood",
+    "totalCrimes": 50911,
+    "percentage": 5.085444985176483
+  },
+  {
+    "_id": "Olympic",
+    "totalCrimes": 49887,
+    "percentage": 4.9831587274950255
+  },
+  {
+    "_id": "Southeast",
+    "totalCrimes": 49827,
+    "percentage": 4.977165392084003
+  },
+  {
+    "_id": "Newton",
+    "totalCrimes": 49041,
+    "percentage": 4.898652698199602
+  },
+  {
+    "_id": "Wilshire",
+    "totalCrimes": 48015,
+    "percentage": 4.79616666267111
+  },
+  { "_id": "Rampart", "totalCrimes": 46678, "percentage": 4.662615171928816 },
+  { "_id": "West LA", "totalCrimes": 45536, "percentage": 4.548542021272345 },
+  {
+    "_id": "Northeast",
+    "totalCrimes": 42772,
+    "percentage": 4.272449036671222
+  },
+  {
+    "_id": "Van Nuys",
+    "totalCrimes": 42730,
+    "percentage": 4.268253701883506
+  },
+  {
+    "_id": "West Valley",
+    "totalCrimes": 41998,
+    "percentage": 4.195135009869025
+  },
+  {
+    "_id": "Devonshire",
+    "totalCrimes": 41578,
+    "percentage": 4.153181661991865
+  },
+  { "_id": "Topanga", "totalCrimes": 41216, "percentage": 4.117021871678693 },
+  { "_id": "Harbor", "totalCrimes": 41190, "percentage": 4.11442475966725 },
+  {
+    "_id": "Mission",
+    "totalCrimes": 40211,
+    "percentage": 4.0166335035440595
+  },
+  {
+    "_id": "Hollenbeck",
+    "totalCrimes": 36913,
+    "percentage": 3.6871998337848315
+  },
+  {
+    "_id": "Foothill",
+    "totalCrimes": 33034,
+    "percentage": 3.2997306994621978
+  }
+]
+
+##### 6. Crimes by Hour of the Day and Most Common Crime
+
+db.crime_reports.aggregate([
+    {
+        $addFields: {
+            hourOccurred: { $toInt: { $substr: ["$TimeOccurred", 0, 2] } } // Extract hour from TimeOccurred
+        }
+    },
+    {
+        $group: {
+            _id: { hour: "$hourOccurred", crime: "$CrimeCode.Description" },
+            totalCrimes: { $sum: 1 }
+        }
+    },
+    {
+        $sort: { "_id.hour": 1, totalCrimes: -1 } // Sort by hour and then by total crimes for each crime
+    },
+    {
+        $group: {
+            _id: "$_id.hour", // Group by hour
+            totalCrimes: { $sum: "$totalCrimes" }, // Sum all crimes for the hour
+            mostCommonCrime: { $first: "$_id.crime" }, // Take the most common crime
+            mostCommonCrimeCount: { $first: "$totalCrimes" } // Take the count of the most common crime
+        }
+    },
+    {
+        $sort: { _id: 1 } // Sort by hour ascending
+    }
+]);
+
+
+[
+  {
+    _id: 0,
+    totalCrimes: 40351,
+    mostCommonCrime: 'THEFT OF IDENTITY',
+    mostCommonCrimeCount: 6143
+  },
+  {
+    _id: 1,
+    totalCrimes: 29655,
+    mostCommonCrime: 'VEHICLE - STOLEN',
+    mostCommonCrimeCount: 3206
+  },
+  {
+    _id: 2,
+    totalCrimes: 25149,
+    mostCommonCrime: 'VEHICLE - STOLEN',
+    mostCommonCrimeCount: 2875
+  },
+  {
+    _id: 3,
+    totalCrimes: 22112,
+    mostCommonCrime: 'BURGLARY',
+    mostCommonCrimeCount: 2991
+  },
+  {
+    _id: 4,
+    totalCrimes: 18719,
+    mostCommonCrime: 'BURGLARY',
+    mostCommonCrimeCount: 2754
+  },
+  {
+    _id: 5,
+    totalCrimes: 17225,
+    mostCommonCrime: 'VEHICLE - STOLEN',
+    mostCommonCrimeCount: 2352
+  },
+  {
+    _id: 6,
+    totalCrimes: 23116,
+    mostCommonCrime: 'THEFT OF IDENTITY',
+    mostCommonCrimeCount: 3803
+  },
+  {
+    _id: 7,
+    totalCrimes: 26171,
+    mostCommonCrime: 'VEHICLE - STOLEN',
+    mostCommonCrimeCount: 2896
+  },
+  {
+    _id: 8,
+    totalCrimes: 37106,
+    mostCommonCrime: 'THEFT OF IDENTITY',
+    mostCommonCrimeCount: 4150
+  },
+  {
+    _id: 9,
+    totalCrimes: 36396,
+    mostCommonCrime: 'THEFT OF IDENTITY',
+    mostCommonCrimeCount: 3575
+  },
+  {
+    _id: 10,
+    totalCrimes: 42846,
+    mostCommonCrime: 'BATTERY - SIMPLE ASSAULT',
+    mostCommonCrimeCount: 3672
+  },
+  {
+    _id: 11,
+    totalCrimes: 43482,
+    mostCommonCrime: 'BATTERY - SIMPLE ASSAULT',
+    mostCommonCrimeCount: 3911
+  },
+  {
+    _id: 12,
+    totalCrimes: 67549,
+    mostCommonCrime: 'THEFT OF IDENTITY',
+    mostCommonCrimeCount: 10340
+  },
+  {
+    _id: 13,
+    totalCrimes: 45387,
+    mostCommonCrime: 'BATTERY - SIMPLE ASSAULT',
+    mostCommonCrimeCount: 4212
+  },
+  {
+    _id: 14,
+    totalCrimes: 49098,
+    mostCommonCrime: 'BATTERY - SIMPLE ASSAULT',
+    mostCommonCrimeCount: 4327
+  },
+  {
+    _id: 15,
+    totalCrimes: 52613,
+    mostCommonCrime: 'VEHICLE - STOLEN',
+    mostCommonCrimeCount: 5068
+  },
+  {
+    _id: 16,
+    totalCrimes: 52748,
+    mostCommonCrime: 'VEHICLE - STOLEN',
+    mostCommonCrimeCount: 5728
+  },
+  {
+    _id: 17,
+    totalCrimes: 58533,
+    mostCommonCrime: 'VEHICLE - STOLEN',
+    mostCommonCrimeCount: 7452
+  },
+  {
+    _id: 18,
+    totalCrimes: 59703,
+    mostCommonCrime: 'VEHICLE - STOLEN',
+    mostCommonCrimeCount: 8687
+  },
+  {
+    _id: 19,
+    totalCrimes: 55379,
+    mostCommonCrime: 'VEHICLE - STOLEN',
+    mostCommonCrimeCount: 8139
+  },
+  {
+    _id: 20,
+    totalCrimes: 56094,
+    mostCommonCrime: 'VEHICLE - STOLEN',
+    mostCommonCrimeCount: 8494
+  },
+  {
+    _id: 21,
+    totalCrimes: 50632,
+    mostCommonCrime: 'VEHICLE - STOLEN',
+    mostCommonCrimeCount: 7916
+  },
+  {
+    _id: 22,
+    totalCrimes: 48929,
+    mostCommonCrime: 'VEHICLE - STOLEN',
+    mostCommonCrimeCount: 8217
+  },
+  {
+    _id: 23,
+    totalCrimes: 42119,
+    mostCommonCrime: 'VEHICLE - STOLEN',
+    mostCommonCrimeCount: 6467
+  }
+]
+
+
+
+##### 7. Most Common Premises for most popular Crime Types
+
+db.crime_reports.aggregate([
+    {
+        $group: {
+            _id: { crime: "$CrimeCode.Description", premises: "$Premises.Description" },
+            totalCrimes: { $sum: 1 }
+        }
+    },
+    {
+        $sort: { "_id.crime": 1, totalCrimes: -1 } // Sort by crime type and then by total crimes
+    },
+    {
+        $group: {
+            _id: "$_id.crime", // Group by crime type
+            mostCommonPremises: { $first: "$_id.premises" },
+            totalCrimes: { $first: "$totalCrimes" }
+        }
+    },
+    { $sort: { totalCrimes: -1 } }, // Sort by total crimes for the top premises
+    { $limit: 10}
+
+]);
+
+[
+  {
+    _id: 'VEHICLE - STOLEN',
+    mostCommonPremises: 'STREET',
+    totalCrimes: 89364
+  },
+  {
+    _id: 'THEFT OF IDENTITY',
+    mostCommonPremises: 'SINGLE FAMILY DWELLING',
+    totalCrimes: 30827
+  },
+  {
+    _id: 'THEFT FROM MOTOR VEHICLE - PETTY ($950 & UNDER)',
+    mostCommonPremises: 'STREET',
+    totalCrimes: 27214
+  },
+  {
+    _id: 'BURGLARY FROM VEHICLE',
+    mostCommonPremises: 'STREET',
+    totalCrimes: 25499
+  },
+  {
+    _id: 'ASSAULT WITH DEADLY WEAPON, AGGRAVATED ASSAULT',
+    mostCommonPremises: 'STREET',
+    totalCrimes: 18830
+  },
+  {
+    _id: 'BURGLARY',
+    mostCommonPremises: 'SINGLE FAMILY DWELLING',
+    totalCrimes: 18329
+  },
+  {
+    _id: 'THEFT FROM MOTOR VEHICLE - GRAND ($950.01 AND OVER)',
+    mostCommonPremises: 'STREET',
+    totalCrimes: 18167
+  },
+  {
+    _id: 'VANDALISM - FELONY ($400 & OVER, ALL CHURCH VANDALISMS)',
+    mostCommonPremises: 'VEHICLE, PASSENGER/TRUCK',
+    totalCrimes: 17898
+  },
+  {
+    _id: 'INTIMATE PARTNER - SIMPLE ASSAULT',
+    mostCommonPremises: 'MULTI-UNIT DWELLING (APARTMENT, DUPLEX, ETC)',
+    totalCrimes: 15973
+  },
+  {
+    _id: 'BATTERY - SIMPLE ASSAULT',
+    mostCommonPremises: 'SINGLE FAMILY DWELLING',
+    totalCrimes: 12611
+  }
+]
+
+##### 8. Top 5 Areas with the Youngest Average Victims
+
+db.crime_reports.aggregate([
+    { $match: { "Victim.Age": { $ne: "0" } } }, // Exclude cases with age "0"
+    {
+        $group: {
+            _id: "$Area.Name", // Group by area name
+            avgVictimAge: { $avg: { $toInt: "$Victim.Age" } },
+            totalVictims: { $sum: 1 }
+        }
+    },
+    { $sort: { avgVictimAge: 1 } }, // Sort by youngest average age
+    { $limit: 5 } // Limit to top 5 areas
+]);
+
+[
+  {
+    _id: 'Southwest',
+    avgVictimAge: 35.707343208320204,
+    totalVictims: 47595
+  },
+  {
+    _id: 'Newton',
+    avgVictimAge: 37.29770373705538,
+    totalVictims: 33315
+  },
+  {
+    _id: 'Rampart',
+    avgVictimAge: 37.591953848489446,
+    totalVictims: 32935
+  },
+  {
+    _id: 'Hollywood',
+    avgVictimAge: 37.866876149601474,
+    totalVictims: 39144
+  },
+  {
+    _id: 'Southeast',
+    avgVictimAge: 37.919636981794255,
+    totalVictims: 36472
+  }
+]
+
+##### 9. Top 5 Crime Types Involving Victims Over 65
+
+db.crime_reports.aggregate([
+    {
+        $addFields: {
+            victimAgeInt: { $toInt: "$Victim.Age" } // Convert Victim.Age to an integer
+        }
+    },
+    { $match: { victimAgeInt: { $gte: 65 } } }, // Filter for victims aged 65 and above
+    {
+        $group: {
+            _id: "$CrimeCode.Description", // Group by crime type
+            totalCrimes: { $sum: 1 }
+        }
+    },
+    { $sort: { totalCrimes: -1 } }, // Sort by most common crimes
+    { $limit: 5 } // Limit to top 5
+]);
+
+[
+  { "_id": "BURGLARY", "totalCrimes": 6476 },
+  { "_id": "BATTERY - SIMPLE ASSAULT", "totalCrimes": 6349 },
+  { "_id": "THEFT OF IDENTITY", "totalCrimes": 5520 },
+  { "_id": "THEFT PLAIN - PETTY ($950 & UNDER)", "totalCrimes": 3821 },
+  {
+    "_id": "VANDALISM - FELONY ($400 & OVER, ALL CHURCH VANDALISMS)",
+    "totalCrimes": 3516
+  }
+]
+
+
+##### 10. Top crimes where females are the victims
+
+db.crime_reports.aggregate([
+    {
+        $match: { "Victim.Sex": "F" } // Filter for crimes where the victim's sex is "F" (female)
+    },
+    {
+        $group: {
+            _id: "$CrimeCode.Description", // Group by crime type
+            totalCrimes: { $sum: 1 } // Count the number of occurrences for each crime
+        }
+    },
+    {
+        $sort: { totalCrimes: -1 } // Sort by total crimes in descending order
+    },
+    { $limit: 10 } // Limit to the top 10 crimes
+]);
+
+[
+  { "_id": "THEFT OF IDENTITY", "totalCrimes": 35633 },
+  { "_id": "INTIMATE PARTNER - SIMPLE ASSAULT", "totalCrimes": 35506 },
+  { "_id": "BATTERY - SIMPLE ASSAULT", "totalCrimes": 35136 },
+  { "_id": "BURGLARY FROM VEHICLE", "totalCrimes": 26336 },
+  { "_id": "THEFT PLAIN - PETTY ($950 & UNDER)", "totalCrimes": 23043 },
+  {
+    "_id": "VANDALISM - FELONY ($400 & OVER, ALL CHURCH VANDALISMS)",
+    "totalCrimes": 21264
+  },
+  { "_id": "BURGLARY", "totalCrimes": 15858 },
+  {
+    "_id": "ASSAULT WITH DEADLY WEAPON, AGGRAVATED ASSAULT",
+    "totalCrimes": 14325
+  },
+  {
+    "_id": "THEFT FROM MOTOR VEHICLE - GRAND ($950.01 AND OVER)",
+    "totalCrimes": 13839
+  },
+  {
+    "_id": "THEFT-GRAND ($950.01 & OVER)EXCPT,GUNS,FOWL,LIVESTK,PROD",
+    "totalCrimes": 12432
+  }
+]
