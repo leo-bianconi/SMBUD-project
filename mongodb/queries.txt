@@ -1,10 +1,10 @@
 ##### 1. Crimes with Average Youngest Victim 
 
 db.crime_reports.aggregate([
-    { $match: { "Victim.Age": { $ne: "0" } } }, // Exclude cases with age "0"
+    { $match: { "Victim.Age": { $ne: "0" } } },
     { $group: { _id: "$CrimeCode.Description", avgAge: { $avg: { $toInt: "$Victim.Age" } } } },
-    { $sort: { avgAge: 1 } }, // Sort by average age in ascending order
-    { $limit: 10 } // Limit to the lowest 10
+    { $sort: { avgAge: 1 } }, 
+    { $limit: 10 } 
 ])
 
 [
@@ -53,7 +53,7 @@ db.crime_reports.aggregate([
             totalCrimes: { $sum: 1 }
         }
     },
-    { $sort: { "_id.year": 1, "_id.month": 1 } } // Sort by year and month
+    { $sort: { "_id.year": 1, "_id.month": 1 } } 
 ]);
 
 [
@@ -75,7 +75,7 @@ db.crime_reports.aggregate([
             totalCrimes: { $sum: 1 }
         }
     },
-    { $sort: { totalCrimes: -1 } } // Sort by the number of crimes
+    { $sort: { totalCrimes: -1 } }
 ]);
 
 [
@@ -107,7 +107,7 @@ db.crime_reports.aggregate([
 
 db.crime_reports.aggregate([
     {
-        $match: { "Weapon.Description": { $ne: "" } } // Include only records where a weapon is involved
+        $match: { "Weapon.Description": { $ne: "" } } 
     },
     {
         $group: {
@@ -116,9 +116,9 @@ db.crime_reports.aggregate([
         }
     },
     {
-        $sort: { totalIncidents: -1 } // Sort by total incidents descending
+        $sort: { totalIncidents: -1 } 
     },
-    { $limit: 10 } // Limit to the lowest 10
+    { $limit: 10 }
 ]);
 
 [
@@ -159,7 +159,7 @@ db.crime_reports.aggregate([
         }
     },
     {
-        $sort: { percentage: -1 } // Sort by crime rate descending
+        $sort: { percentage: -1 } 
     }
 ]);
 
@@ -256,7 +256,7 @@ db.crime_reports.aggregate([
 db.crime_reports.aggregate([
     {
         $addFields: {
-            hourOccurred: { $toInt: { $substr: ["$TimeOccurred", 0, 2] } } // Extract hour from TimeOccurred
+            hourOccurred: { $toInt: { $substr: ["$TimeOccurred", 0, 2] } }
         }
     },
     {
@@ -266,18 +266,18 @@ db.crime_reports.aggregate([
         }
     },
     {
-        $sort: { "_id.hour": 1, totalCrimes: -1 } // Sort by hour and then by total crimes for each crime
+        $sort: { "_id.hour": 1, totalCrimes: -1 }
     },
     {
         $group: {
-            _id: "$_id.hour", // Group by hour
-            totalCrimes: { $sum: "$totalCrimes" }, // Sum all crimes for the hour
-            mostCommonCrime: { $first: "$_id.crime" }, // Take the most common crime
-            mostCommonCrimeCount: { $first: "$totalCrimes" } // Take the count of the most common crime
+            _id: "$_id.hour",
+            totalCrimes: { $sum: "$totalCrimes" }, 
+            mostCommonCrime: { $first: "$_id.crime" }, 
+            mostCommonCrimeCount: { $first: "$totalCrimes" }
         }
     },
     {
-        $sort: { _id: 1 } // Sort by hour ascending
+        $sort: { _id: 1 } 
     }
 ]);
 
@@ -441,16 +441,16 @@ db.crime_reports.aggregate([
         }
     },
     {
-        $sort: { "_id.crime": 1, totalCrimes: -1 } // Sort by crime type and then by total crimes
+        $sort: { "_id.crime": 1, totalCrimes: -1 }
     },
     {
         $group: {
-            _id: "$_id.crime", // Group by crime type
+            _id: "$_id.crime", 
             mostCommonPremises: { $first: "$_id.premises" },
             totalCrimes: { $first: "$totalCrimes" }
         }
     },
-    { $sort: { totalCrimes: -1 } }, // Sort by total crimes for the top premises
+    { $sort: { totalCrimes: -1 } },
     { $limit: 10}
 
 ]);
@@ -511,16 +511,16 @@ db.crime_reports.aggregate([
 ##### 8. Top 5 Areas with the Youngest Average Victims
 
 db.crime_reports.aggregate([
-    { $match: { "Victim.Age": { $ne: "0" } } }, // Exclude cases with age "0"
+    { $match: { "Victim.Age": { $ne: "0" } } },
     {
         $group: {
-            _id: "$Area.Name", // Group by area name
+            _id: "$Area.Name",
             avgVictimAge: { $avg: { $toInt: "$Victim.Age" } },
             totalVictims: { $sum: 1 }
         }
     },
-    { $sort: { avgVictimAge: 1 } }, // Sort by youngest average age
-    { $limit: 5 } // Limit to top 5 areas
+    { $sort: { avgVictimAge: 1 } }, 
+    { $limit: 5 } 
 ]);
 
 [
@@ -556,18 +556,18 @@ db.crime_reports.aggregate([
 db.crime_reports.aggregate([
     {
         $addFields: {
-            victimAgeInt: { $toInt: "$Victim.Age" } // Convert Victim.Age to an integer
+            victimAgeInt: { $toInt: "$Victim.Age" } 
         }
     },
-    { $match: { victimAgeInt: { $gte: 65 } } }, // Filter for victims aged 65 and above
+    { $match: { victimAgeInt: { $gte: 65 } } },
     {
         $group: {
-            _id: "$CrimeCode.Description", // Group by crime type
+            _id: "$CrimeCode.Description",
             totalCrimes: { $sum: 1 }
         }
     },
-    { $sort: { totalCrimes: -1 } }, // Sort by most common crimes
-    { $limit: 5 } // Limit to top 5
+    { $sort: { totalCrimes: -1 } }, 
+    { $limit: 5 }
 ]);
 
 [
@@ -586,18 +586,18 @@ db.crime_reports.aggregate([
 
 db.crime_reports.aggregate([
     {
-        $match: { "Victim.Sex": "F" } // Filter for crimes where the victim's sex is "F" (female)
+        $match: { "Victim.Sex": "F" }
     },
     {
         $group: {
-            _id: "$CrimeCode.Description", // Group by crime type
-            totalCrimes: { $sum: 1 } // Count the number of occurrences for each crime
+            _id: "$CrimeCode.Description",
+            totalCrimes: { $sum: 1 }
         }
     },
     {
-        $sort: { totalCrimes: -1 } // Sort by total crimes in descending order
+        $sort: { totalCrimes: -1 } 
     },
-    { $limit: 10 } // Limit to the top 10 crimes
+    { $limit: 10 } 
 ]);
 
 [
